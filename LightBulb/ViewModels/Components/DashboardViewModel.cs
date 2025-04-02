@@ -28,18 +28,20 @@ public partial class DashboardViewModel : ViewModelBase
     private readonly Timer _updateIsPausedTimer;
 
     private IDisposable? _enableAfterDelayRegistration;
+    private ColorConfiguration? _configurationSmoothingSource;
+    private ColorConfiguration? _configurationSmoothingTarget;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsActive))]
-    private bool _isEnabled = true;
+    public partial bool IsEnabled { get; set; } = true;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsActive))]
-    private bool _isPaused;
+    public partial bool IsPaused { get; set; }
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsActive))]
-    private bool _isCyclePreviewEnabled;
+    public partial bool IsCyclePreviewEnabled { get; set; }
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(SolarTimes))]
@@ -49,7 +51,7 @@ public partial class DashboardViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(SunsetEnd))]
     [NotifyPropertyChangedFor(nameof(TargetConfiguration))]
     [NotifyPropertyChangedFor(nameof(CycleState))]
-    private DateTimeOffset _instant = DateTimeOffset.Now;
+    public partial DateTimeOffset Instant { get; set; } = DateTimeOffset.Now;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsOffsetEnabled))]
@@ -57,7 +59,7 @@ public partial class DashboardViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(AdjustedDayConfiguration))]
     [NotifyPropertyChangedFor(nameof(AdjustedNightConfiguration))]
     [NotifyPropertyChangedFor(nameof(CycleState))]
-    private double _temperatureOffset;
+    public partial double TemperatureOffset { get; set; }
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsOffsetEnabled))]
@@ -65,13 +67,11 @@ public partial class DashboardViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(AdjustedDayConfiguration))]
     [NotifyPropertyChangedFor(nameof(AdjustedNightConfiguration))]
     [NotifyPropertyChangedFor(nameof(CycleState))]
-    private double _brightnessOffset;
+    public partial double BrightnessOffset { get; set; }
 
     [ObservableProperty]
-    private ColorConfiguration _currentConfiguration = ColorConfiguration.Default;
-
-    private ColorConfiguration? _configurationSmoothingSource;
-    private ColorConfiguration? _configurationSmoothingTarget;
+    public partial ColorConfiguration CurrentConfiguration { get; set; } =
+        ColorConfiguration.Default;
 
     public DashboardViewModel(
         SettingsService settingsService,
@@ -86,13 +86,18 @@ public partial class DashboardViewModel : ViewModelBase
         _externalApplicationService = externalApplicationService;
 
         _eventRoot.Add(
-            // Cancel 'disable temporarily' when switching to enabled
             this.WatchProperty(
                 o => o.IsEnabled,
                 () =>
                 {
                     if (IsEnabled)
+                    {
+                        // Cancel any activate 'disable temporarily' timers
                         _enableAfterDelayRegistration?.Dispose();
+
+                        // Invalidate device contexts
+                        _gammaService.InvalidateDeviceContexts();
+                    }
                 }
             )
         );
